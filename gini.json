@@ -2,7 +2,7 @@
     "id": "ldap",
     "name": "LDAP",
     "description": "LDAP Module",
-    "version": "0.0.0",
     "dependencies": {
+        "gini": "*"
     }
 }

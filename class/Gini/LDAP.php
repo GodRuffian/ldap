@@ -65,11 +65,12 @@ class LDAP
 
     public function bind($dn, $password)
     {
+        set_error_handler(function () {}, E_ALL ^ E_NOTICE);
         $ret = @ldap_bind($this->ds, $dn, $password);
+        restore_error_handler();
         if ($dn != $this->getOption('root_dn')) {
             $this->_bindRoot();
         }
-
         return $ret;
     }
 

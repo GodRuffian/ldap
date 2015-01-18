@@ -1,20 +1,19 @@
 <?php
 /**
-* @file LDAP.php
-* @brief 对ldap的封装
-* @author Hongjie Zhu
-* @version 0.1.0
-* @date 2015-01-08
+ * @file LDAP.php
+ * @brief 对ldap的封装
+ * @author Hongjie Zhu
+ * @version 0.1.0
+ * @date 2015-01-08
  */
 
 namespace Gini;
 
 class LDAP
 {
-
     private $ds;
 
-    protected $options = array();
+    protected $options = [];
 
     private $_rootBinded = false;
 
@@ -23,19 +22,32 @@ class LDAP
         return \Gini\IoC::construct('\Gini\LDAP', $opt);
     }
 
+    private static $_LDAPs = [];
+    public static function of($name)
+    {
+        if (!isset(self::$_LDAPs[$name])) {
+            $options = \Gini\Config::get("ldap.$name");
+            $ldap = \Gini\IoC::construct('\Gini\LDAP', $options);
+            self::$_LDAPs[$name] = $ldap;
+        }
+
+        return self::$_LDAPs[$name];
+    }
+
     public function __construct($opt)
     {
         $this->options = (array) $opt;
 
         $ds = @ldap_connect($this->getOption('host'));
-        if (!$ds) throw new \Error_Exception(T('无法连接LDAP, 请检查您的LDAP配置'));
+        if (!$ds) {
+            throw new \Error_Exception(T('无法连接LDAP, 请检查您的LDAP配置'));
+        }
 
         @ldap_set_option($ds, LDAP_OPT_PROTOCOL_VERSION, 3);
         @ldap_set_option($ds, LDAP_OPT_NETWORK_TIMEOUT, 3);
 
         $this->ds = $ds;
         $this->_bindRoot();
-
     }
 
     public function __destruct()
@@ -46,7 +58,7 @@ class LDAP
         }
     }
 
-    public function getOption($name, $default=null)
+    public function getOption($name)
     {
         return $this->options[$name];
     }
@@ -66,7 +78,7 @@ class LDAP
         return $this->bind($this->getOption('root_dn'), $this->getOption('root_pass'));
     }
 
-    public function rename($dn, $dn_new, $base=null, $deleteoldrdn = true)
+    public function rename($dn, $dn_new, $base = null, $deleteoldrdn = true)
     {
         return @ldap_rename($this->ds, $dn, $dn_new, $base, $deleteoldrdn);
     }
@@ -183,11 +195,14 @@ class LDAP
         $data += $this->_getPasswordAttrs($password);
 
         $ret = $this->add($dn, $data);
-        if ($ret)  $this->enableAccount($dn, true);
+        if ($ret) {
+            $this->enableAccount($dn, true);
+        }
+
         return $ret;
     }
 
-    public function enableAccount($dn, $enable=true)
+    public function enableAccount($dn, $enable = true)
     {
         switch ($this->getOption('server_type')) {
         case 'ads':
@@ -225,17 +240,18 @@ class LDAP
         }
 
         $data = array(
-            'userPassword'=> $secret,
+            'userPassword' => $secret,
         );
 
         return $data;
-
     }
 
     private function _posixGetNewUid()
     {
         static $default_uid = 0;
-        if (!$default_uid) $default_uid = $this->getOption('posix.default_uid');
+        if (!$default_uid) {
+            $default_uid = $this->getOption('posix.default_uid');
+        }
         $account = $default_uid + 1;
         while (posix_getpwuid($account)) {
             $account ++;
@@ -243,5 +259,4 @@ class LDAP
 
         return $default_uid = $account;
     }
-
 }
